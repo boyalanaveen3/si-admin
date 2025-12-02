@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VHub Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; margin-bottom: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .header p { opacity: 0.9; }
+        .logout-btn { float: right; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); }
+        
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.3s ease; border-left: 4px solid #3b82f6; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+        .stat-card.customers { border-left-color: #10b981; }
+        .stat-card.products { border-left-color: #f59e0b; }
+        .stat-card.submissions { border-left-color: #ef4444; }
+        .stat-number { font-size: 2.5rem; font-weight: bold; color: #1f2937; margin-bottom: 0.5rem; }
+        .stat-label { color: #6b7280; font-size: 1rem; font-weight: 500; }
+        .stat-icon { float: right; font-size: 2rem; opacity: 0.3; }
+        
+        .content-section { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 2rem; overflow: hidden; }
+        .section-header { padding: 1.5rem 2rem; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+        .section-title { font-size: 1.25rem; font-weight: 600; color: #1f2937; }
+        .section-content { padding: 2rem; }
+        
+        .table { width: 100%; border-collapse: collapse; }
+        .table th { background: #f8fafc; padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; }
+        .table td { padding: 1rem; border-bottom: 1px solid #f3f4f6; }
+        .table tr:hover { background: #f9fafb; }
+        
+        .btn { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+        .btn:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-secondary { background: #6b7280; }
+        .btn-secondary:hover { background: #4b5563; }
+        
+        .auth-form { max-width: 400px; margin: 4rem auto; background: white; padding: 3rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; }
+        .form-group input { width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; }
+        .form-group input:focus { outline: none; border-color: #3b82f6; }
+        
+        .hidden { display: none; }
+        .loading { text-align: center; padding: 2rem; color: #6b7280; }
+        .empty-state { text-align: center; padding: 3rem; color: #6b7280; }
+        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        
+        .nav-tabs { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 2rem; }
+        .nav-tab { padding: 1rem 2rem; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; color: #6b7280; transition: all 0.2s; }
+        .nav-tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+        .nav-tab:hover { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div id="loginForm" class="auth-form">
+        <h2 id="formTitle" style="text-align: center; margin-bottom: 2rem; color: #1f2937;">Admin Login</h2>
+        <div class="form-group">
+            <label>Username:</label>
+            <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="password" required>
+        </div>
+        <button type="button" class="btn" id="authBtn" onclick="handleAuth()" style="width: 100%; margin-bottom: 1rem;">Login</button>
+        <p style="text-align: center;">
+            <span id="toggleText">Don't have an account?</span>
+            <button type="button" class="btn btn-secondary" onclick="toggleForm()" style="margin-left: 0.5rem;">Register</button>
+        </p>
+    </div>
+
+    <div id="dashboard" class="container hidden">
+        <div class="header">
+            <button onclick="logout()" class="btn logout-btn">Logout</button>
+            <h1>VHub Admin Dashboard</h1>
+            <p>Manage your customers and products efficiently</p>
+        </div>
+
+        <div id="stats" class="stats"></div>
+
+        <div class="content-section">
+            <div class="nav-tabs">
+                <div class="nav-tab active" onclick="showTab('customers')">Customer Submissions</div>
+                <div class="nav-tab" onclick="showTab('products')">Products</div>
+            </div>
+            
+            <div id="customersTab" class="tab-content">
+                <div class="section-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3>Recent Customer Submissions</h3>
+                        <button onclick="loadCustomers()" class="btn">Refresh</button>
+                    </div>
+                    <div id="customersTable"></div>
+                </div>
+            </div>
+            
+            <div id="productsTab" class="tab-content hidden">
+                <div class="section-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3>Products</h3>
+                        <button onclick="loadProducts()" class="btn">Refresh</button>
+                    </div>
+                    <div id="productsTable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let isLoginMode = true;
+        let currentTab = 'customers';
+        
+        function toggleForm() {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('formTitle');
+            const btn = document.getElementById('authBtn');
+            const toggleText = document.getElementById('toggleText');
+            
+            if (isLoginMode) {
+                title.textContent = 'Admin Login';
+                btn.textContent = 'Login';
+                toggleText.textContent = "Don't have an account?";
+            } else {
+                title.textContent = 'Admin Register';
+                btn.textContent = 'Register';
+                toggleText.textContent = 'Already have an account?';
+            }
+        }
+
+        async function handleAuth() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const endpoint = isLoginMode ? 'login' : 'register';
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('adminToken', data.token);
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    loadDashboard();
+                } else {
+                    alert(data.message || 'Authentication failed');
+                }
+            } catch (error) {
+                alert('Request failed');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + 'Tab').classList.remove('hidden');
+            currentTab = tab;
+            
+            if (tab === 'products') loadProducts();
+            else loadCustomers();
+        }
+
+        async function loadDashboard() {
+            await loadStats();
+            await loadCustomers();
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/stats`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+                });
+                
+                const data = await response.json();
+                
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card customers" onclick="showTab('customers')">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-number">${data.stats.totalCustomers}</div>
+                        <div class="stat-label">Total Customers</div>
+                    </div>
+                    <div class="stat-card products" onclick="showTab('products')">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-number">${data.stats.totalProducts}</div>
+                        <div class="stat-label">Total Products</div>
+                    </div>
+                    <div class="stat-card submissions" onclick="showTab('customers')">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-number">${data.stats.recentSubmissions}</div>
+                        <div class="stat-label">Recent Submissions</div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('stats').innerHTML = '<div class="loading">Error loading stats</div>';
+            }
+        }
+
+        async function loadCustomers() {
+            document.getElementById('customersTable').innerHTML = '<div class="loading">Loading customers...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/stats`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.recentCustomers && data.recentCustomers.length > 0) {
+                    const tableHtml = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Message</th>
+                                    <th>Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.recentCustomers.map(customer => `
+                                    <tr>
+                                        <td><strong>${customer.name}</strong></td>
+                                        <td>${customer.email}</td>
+                                        <td>${customer.phone}</td>
+                                        <td>${customer.message.substring(0, 50)}${customer.message.length > 50 ? '...' : ''}</td>
+                                        <td><span class="badge badge-success">${new Date(customer.createdAt).toLocaleDateString()}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('customersTable').innerHTML = tableHtml;
+                } else {
+                    document.getElementById('customersTable').innerHTML = '<div class="empty-state">No recent customers found</div>';
+                }
+            } catch (error) {
+                document.getElementById('customersTable').innerHTML = '<div class="empty-state">Error loading customers</div>';
+            }
+        }
+
+        async function loadProducts() {
+            document.getElementById('productsTable').innerHTML = '<div class="loading">Loading products...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/products`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const tableHtml = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Description</th>
+                                    <th>Category</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(product => `
+                                    <tr>
+                                        <td><span class="badge badge-warning">${product.id}</span></td>
+                                        <td><strong>${product.title}</strong></td>
+                                        <td>${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</td>
+                                        <td>${product.category || 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('productsTable').innerHTML = tableHtml;
+                } else {
+                    document.getElementById('productsTable').innerHTML = '<div class="empty-state">No products found</div>';
+                }
+            } catch (error) {
+                document.getElementById('productsTable').innerHTML = '<div class="empty-state">Error loading products</div>';
+            }
+        }
+
+        // Check for existing token on page load
+        const token = localStorage.getItem('adminToken');
+        if (token) {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            loadDashboard();
+        }
+    </script>
+</body>
+</html>
