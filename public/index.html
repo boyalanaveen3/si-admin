@@ -37,6 +37,11 @@
         .btn:hover { background: #2563eb; transform: translateY(-1px); }
         .btn-secondary { background: #6b7280; }
         .btn-secondary:hover { background: #4b5563; }
+        .section-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .toolbar-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .view-toggle { display: flex; gap: 0.25rem; background: #e5e7eb; padding: 0.25rem; border-radius: 9999px; }
+        .btn-toggle { background: transparent; border: none; border-radius: 9999px; padding: 0.4rem 1.1rem; font-weight: 500; color: #6b7280; cursor: pointer; transition: all 0.2s; }
+        .btn-toggle.active { background: #fff; color: #1f2937; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         
         .auth-form { max-width: 400px; margin: 4rem auto; background: white; padding: 3rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .form-group { margin-bottom: 1.5rem; }
@@ -68,17 +73,13 @@
             <label>Password:</label>
             <input type="password" id="password" required>
         </div>
-        <button type="button" class="btn" id="authBtn" onclick="handleAuth()" style="width: 100%; margin-bottom: 1rem;">Login</button>
-        <p style="text-align: center;">
-            <span id="toggleText">Don't have an account?</span>
-            <button type="button" class="btn btn-secondary" onclick="toggleForm()" style="margin-left: 0.5rem;">Register</button>
-        </p>
+        <button type="button" class="btn" id="authBtn" onclick="handleAuth()" style="width: 100%;">Login</button>
     </div>
 
     <div id="dashboard" class="container hidden">
         <div class="header">
             <button onclick="logout()" class="btn logout-btn">Logout</button>
-            <h1>VHub Admin Dashboard</h1>
+            <h1>SuccessInsight Admin Dashboard</h1>
             <p>Manage your customers and products efficiently</p>
         </div>
 
@@ -86,15 +87,21 @@
 
         <div class="content-section">
             <div class="nav-tabs">
-                <div class="nav-tab active" onclick="showTab('customers')">Customer Submissions</div>
-                <div class="nav-tab" onclick="showTab('products')">Products</div>
+                <div class="nav-tab active" data-tab="customers" onclick="showTab('customers', event)">Customer Submissions</div>
+                <div class="nav-tab" data-tab="products" onclick="showTab('products', event)">Products</div>
             </div>
             
             <div id="customersTab" class="tab-content">
                 <div class="section-content">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h3>Recent Customer Submissions</h3>
-                        <button onclick="loadCustomers()" class="btn">Refresh</button>
+                    <div class="section-toolbar">
+                        <h3 id="customersHeading">Recent Customer Submissions</h3>
+                        <div class="toolbar-actions">
+                            <div class="view-toggle">
+                                <button type="button" id="recentToggle" class="btn-toggle active" onclick="setCustomersView('recent')">Recent</button>
+                                <button type="button" id="totalToggle" class="btn-toggle" onclick="setCustomersView('all')">Total</button>
+                            </div>
+                            <button onclick="loadCustomers()" class="btn">Refresh</button>
+                        </div>
                     </div>
                     <div id="customersTable"></div>
                 </div>
@@ -102,9 +109,11 @@
             
             <div id="productsTab" class="tab-content hidden">
                 <div class="section-content">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div class="section-toolbar">
                         <h3>Products</h3>
-                        <button onclick="loadProducts()" class="btn">Refresh</button>
+                        <div class="toolbar-actions">
+                            <button onclick="loadProducts()" class="btn">Refresh</button>
+                        </div>
                     </div>
                     <div id="productsTable"></div>
                 </div>
@@ -116,33 +125,15 @@
         const API_BASE = window.location.origin.includes('localhost')
             ? 'http://localhost:5000/api'
             : '/api';
-        let isLoginMode = true;
         let currentTab = 'customers';
+        let customersView = 'recent';
         
-        function toggleForm() {
-            isLoginMode = !isLoginMode;
-            const title = document.getElementById('formTitle');
-            const btn = document.getElementById('authBtn');
-            const toggleText = document.getElementById('toggleText');
-            
-            if (isLoginMode) {
-                title.textContent = 'Admin Login';
-                btn.textContent = 'Login';
-                toggleText.textContent = "Don't have an account?";
-            } else {
-                title.textContent = 'Admin Register';
-                btn.textContent = 'Register';
-                toggleText.textContent = 'Already have an account?';
-            }
-        }
-
         async function handleAuth() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const endpoint = isLoginMode ? 'login' : 'register';
 
             try {
-                const response = await fetch(`${API_BASE}/auth/${endpoint}`, {
+                const response = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -169,16 +160,36 @@
             document.getElementById('dashboard').classList.add('hidden');
         }
 
-        function showTab(tab) {
+        function setCustomersView(view) {
+            customersView = view;
+            const recentToggle = document.getElementById('recentToggle');
+            const totalToggle = document.getElementById('totalToggle');
+            if (recentToggle && totalToggle) {
+                recentToggle.classList.toggle('active', view === 'recent');
+                totalToggle.classList.toggle('active', view === 'all');
+            }
+            if (currentTab === 'customers') {
+                loadCustomers();
+            }
+        }
+
+        function showTab(tab, evt) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            const targetTab = evt?.currentTarget || document.querySelector(`.nav-tab[data-tab="${tab}"]`);
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-            
-            event.target.classList.add('active');
             document.getElementById(tab + 'Tab').classList.remove('hidden');
+
+            const previousTab = currentTab;
             currentTab = tab;
-            
-            if (tab === 'products') loadProducts();
-            else loadCustomers();
+
+            if (tab === 'products' && previousTab !== 'products') {
+                loadProducts();
+            } else if (tab === 'customers' && previousTab !== 'customers') {
+                loadCustomers();
+            }
         }
 
         async function loadDashboard() {
@@ -195,7 +206,7 @@
                 const data = await response.json();
                 
                 document.getElementById('stats').innerHTML = `
-                    <div class="stat-card customers" onclick="showTab('customers')">
+                    <div class="stat-card customers" onclick="setCustomersView('all'); showTab('customers')">
                         <div class="stat-icon">👥</div>
                         <div class="stat-number">${data.stats.totalCustomers}</div>
                         <div class="stat-label">Total Customers</div>
@@ -205,7 +216,7 @@
                         <div class="stat-number">${data.stats.totalProducts}</div>
                         <div class="stat-label">Total Products</div>
                     </div>
-                    <div class="stat-card submissions" onclick="showTab('customers')">
+                    <div class="stat-card submissions" onclick="setCustomersView('recent'); showTab('customers')">
                         <div class="stat-icon">📝</div>
                         <div class="stat-number">${data.stats.recentSubmissions}</div>
                         <div class="stat-label">Recent Submissions</div>
@@ -217,16 +228,38 @@
         }
 
         async function loadCustomers() {
-            document.getElementById('customersTable').innerHTML = '<div class="loading">Loading customers...</div>';
+            const customersTable = document.getElementById('customersTable');
+            const heading = document.getElementById('customersHeading');
+            if (customersTable) {
+                customersTable.innerHTML = '<div class="loading">Loading customers...</div>';
+            }
+            if (heading) {
+                heading.textContent = customersView === 'recent' ? 'Recent Customer Submissions' : 'All Customers';
+            }
             
             try {
-                const response = await fetch(`${API_BASE}/dashboard/stats`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
-                });
-                
-                const data = await response.json();
-                
-                if (data.recentCustomers && data.recentCustomers.length > 0) {
+                let customers = [];
+                if (customersView === 'recent') {
+                    const response = await fetch(`${API_BASE}/dashboard/stats`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Failed to load recent customers');
+                    }
+                    customers = data.recentCustomers || [];
+                } else {
+                    const response = await fetch(`${API_BASE}/dashboard/customers?limit=1000`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Failed to load customers');
+                    }
+                    customers = data.customers || [];
+                }
+
+                if (customers.length > 0) {
                     const tableHtml = `
                         <table class="table">
                             <thead>
@@ -239,7 +272,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${data.recentCustomers.map(customer => `
+                                ${customers.map(customer => `
                                     <tr>
                                         <td><strong>${customer.name}</strong></td>
                                         <td>${customer.email}</td>
@@ -251,12 +284,14 @@
                             </tbody>
                         </table>
                     `;
-                    document.getElementById('customersTable').innerHTML = tableHtml;
+                    customersTable.innerHTML = tableHtml;
                 } else {
-                    document.getElementById('customersTable').innerHTML = '<div class="empty-state">No recent customers found</div>';
+                    customersTable.innerHTML = `<div class="empty-state">No ${customersView === 'recent' ? 'recent ' : ''}customers found</div>`;
                 }
             } catch (error) {
-                document.getElementById('customersTable').innerHTML = '<div class="empty-state">Error loading customers</div>';
+                if (customersTable) {
+                    customersTable.innerHTML = '<div class="empty-state">Error loading customers</div>';
+                }
             }
         }
 

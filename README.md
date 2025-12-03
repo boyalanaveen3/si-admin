@@ -1,4 +1,4 @@
-# VHub Admin Dashboard
+# SuccessInsight Admin Dashboard
 
 Admin dashboard for managing customer submissions and products.
 
